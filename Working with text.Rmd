@@ -1,0 +1,133 @@
+---
+title: "MATH 490 HW 5"
+author: "Hussam Taj"
+date: "11/12/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(rvest)
+library(tidyverse)
+```
+
+Question 1:
+```{r}
+counties1 <- tibble(
+county = c('De Witt County', 'Lac qui Parle County',
+'Lewis and Clark County', 'St John the Baptist Parish'),
+state = c("IL", "MN", "MT", "LA"))
+counties2 <- tibble(
+county = c('DeWitt ', 'Lac Qui Parle',
+'Lewis & Clark ', 'St. John the Baptist'),
+population = c(16798, 8067, 55716, 43044))
+
+counties1 %>% mutate(county = str_squish(county)) %>%
+              mutate(county = str_to_lower(county)) %>% 
+              mutate(county = str_remove(county, "county")) %>% 
+              mutate(county = str_remove(county, "parish")) %>% 
+              mutate(county = str_squish(county)) %>% 
+              mutate(county = ifelse(county == "de witt", "dewitt", county)) -> counties1
+              
+
+counties2 %>% mutate(county = str_squish(county)) %>%
+              mutate(county = str_to_lower(county)) %>% 
+              mutate(county = str_replace(county, "&", "and")) %>% 
+              mutate(county = str_remove(county, "\\.")) -> counties2
+               
+
+inner_join(counties1, counties2, by = "county")
+```
+
+
+```{r}
+entries <- readLines("smallLog.txt")
+entries
+```
+
+Question 2:
+```{r}
+str_extract_all(entries, "\\d{1,2}/[A-Za-z]{3}/\\d{4}\\:\\d{2}\\:\\d{2}\\:\\d{1,2}")
+```
+
+```{r}
+# Install the package by uncomment the following line and run it
+# install.packages("lubridate")
+library(lubridate)
+```
+1.
+```{r}
+ymd(20101215)
+mdy("4/1/17")
+dmy("2/Feb/2005")
+```
+2.
+```{r}
+bday <- dmy("14/10/1979")
+month(bday)
+wday(bday, label = TRUE)
+year(bday) <- 2016
+wday(bday, label = TRUE)
+```
+3.
+```{r}
+time <- ymd_hms("2010-12-13 15:30:30")
+time
+# Changes printing
+with_tz(time, "America/Chicago")
+# Changes time
+force_tz(time, "America/Chicago")
+```
+
+```{r}
+violations <- read_csv("violations.csv")
+head(violations)
+```
+
+4.
+```{r}
+violations %>% mutate(Corrected_date = str_extract(violations$description, "\\d{2}/\\d{2}/\\d{4}")) -> violations
+violations
+```
+
+5.
+```{r}
+violations %>% mutate(description = str_remove(description, "\\[.*\\]")) %>% 
+  mutate(description = str_squish(description)) -> violations
+violations
+count(violations, description) %>% 
+  arrange(desc(n)) %>% 
+  head(20)
+```
+
+```{r}
+violations <- mutate(violations, is_clean = str_detect(description, "clean|sanit"))
+```
+
+6.
+```{r}
+violations <- mutate(violations, is_highrisk = str_detect(str_to_lower(description), "high risk")) %>% 
+              mutate(is_vermin = str_detect(str_to_lower(description), "vermin")) %>% 
+              mutate(is_surfaces = str_detect(str_to_lower(description), "wall|celing|floor|surface")) %>% 
+              mutate(is_humans = str_detect(str_to_lower(description), "hands|glove|hair|nail")) %>%
+              mutate(is_permits = str_detect(str_to_lower(description), "permits|certif"))
+violations
+```
+7. 
+```{r}
+inspections <- read_csv("C:/Users/Hussam Taj/Desktop/Fall 2019/MATH 490/HW 7/inspections.csv")
+inspections
+
+violations %>% mutate(n_type = is_clean + is_highrisk + is_vermin + is_surfaces + is_humans + is_permits) -> violations
+violations
+
+new_data <- inner_join(inspections, violations, by = c("business_id", "date"))
+new_data
+
+ggplot(new_data, aes(factor(n_type), score))+
+  geom_boxplot()
+```
+
